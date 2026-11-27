@@ -1,13 +1,15 @@
 import 'package:uuid/uuid.dart';
+import 'package:notixa/core/ai/gemini_extraction_service.dart';
 import 'package:notixa/core/domain/result.dart';
 import 'package:notixa/features/calendar/domain/models/meeting.dart';
 import 'package:notixa/features/wallet/domain/models/transaction.dart';
 import '../models/extracted_note.dart';
 
 /// Intelligent Multi-Item AI & NLP Extraction Engine
-/// Specially optimized for Egyptian Arabic dialect and compound multi-expense sentences.
+/// Combines Google Gemini Flash AI (online) with High-Precision Local Regex NLP (offline).
 class ExtractNoteUsecase {
   final Uuid _uuid = const Uuid();
+  final GeminiExtractionService _geminiService = GeminiExtractionService();
 
   ExtractNoteUsecase([dynamic _]);
 
@@ -34,7 +36,20 @@ class ExtractNoteUsecase {
       ));
     }
 
-    // Normalize Eastern Arabic numerals
+    // 1. Try Google Gemini Flash AI first for 100% dialect understanding & context
+    try {
+      final geminiResult = await _geminiService.extractNote(
+        rawText: originalTrimmed,
+        audioPath: audioPath,
+      );
+      if (geminiResult != null && geminiResult.extractedTransactions.isNotEmpty) {
+        return Success(geminiResult);
+      }
+    } catch (_) {
+      // Offline fallback below
+    }
+
+    // 2. High-Precision Local Egyptian Dialect Regex Fallback
     final text = _normalizeDigits(originalTrimmed);
 
     final transactions = <Transaction>[];
