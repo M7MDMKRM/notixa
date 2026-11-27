@@ -48,20 +48,17 @@ class ExtractNoteUsecase {
 
     final matches = numPattern.allMatches(text).toList();
 
-    int lastEnd = 0;
     for (int i = 0; i < matches.length; i++) {
       final m = matches[i];
       final amount = double.tryParse(m.group(1) ?? '') ?? 0.0;
       if (amount <= 0) continue;
 
-      // Determine clause boundary
-      // Look back to last match end, and look forward slightly past current match
-      final clauseStart = lastEnd;
-      final clauseEnd = (i < matches.length - 1) ? matches[i + 1].start : text.length;
+      // Correct clause boundary: from end of previous match to end of current match
+      final clauseStart = (i == 0) ? 0 : matches[i - 1].end;
+      final clauseEnd = m.end;
       final rawClause = text.substring(clauseStart, clauseEnd).trim();
-      lastEnd = clauseEnd;
 
-      // Clean leading/trailing connectors
+      // Clean leading connectors
       String cleanClause = rawClause.replaceFirst(RegExp(r'^[و\s،,ثمبعدين]+'), '').trim();
       final lower = cleanClause.toLowerCase();
 
@@ -79,68 +76,95 @@ class ExtractNoteUsecase {
 
       // Detect Category & Type (Income vs Expense)
       String category = 'عام ومصروفات';
+      String noteDescription = 'مصروف متنوع';
       bool isIncome = false;
 
-      // Check if it's an initial amount / income
+      // 1. Initial Amount / Income Detection
       final hasIncomeKeywords = lower.contains('معايا') || lower.contains('نزلت ب') || 
-                                lower.contains('استلمت') || lower.contains('قبضت') || 
-                                lower.contains('جالي') || lower.contains('دخل') || 
-                                lower.contains('حولي') || lower.contains('حولتلي') || 
-                                lower.contains('مكافأة') || lower.contains('راتب') ||
-                                lower.contains('مرتب') || lower.contains('received') || 
-                                lower.contains('income') || lower.contains('salary');
+                                lower.contains('نزل معايا') || lower.contains('استلمت') || 
+                                lower.contains('قبضت') || lower.contains('جالي') || 
+                                lower.contains('دخل') || lower.contains('حولي') || 
+                                lower.contains('حولتلي') || lower.contains('مكافأة') || 
+                                lower.contains('راتب') || lower.contains('مرتب') || 
+                                lower.contains('received') || lower.contains('income') || 
+                                lower.contains('salary');
 
-      // Expense keywords
-      final isFood = lower.contains('فطار') || lower.contains('فطرت') || lower.contains('أكل') || 
-                     lower.contains('غدا') || lower.contains('غداء') || lower.contains('عشا') || 
-                     lower.contains('عشاء') || lower.contains('ساندوتش') || lower.contains('قهوة') || 
-                     lower.contains('شاي') || lower.contains('مطعم') || lower.contains('عصير') ||
-                     lower.contains('food') || lower.contains('coffee');
+      // 2. Food & Drink Detection
+      final isDrink = lower.contains('ميه') || lower.contains('مايه') || lower.contains('مياه') || 
+                      lower.contains('عصير') || lower.contains('كانز') || lower.contains('بيبسي') || 
+                      lower.contains('كولا') || lower.contains('شاي') || lower.contains('قهوة') || 
+                      lower.contains('نسكافيه') || lower.contains('شربت') || lower.contains('ازازة');
 
+      final isFood = lower.contains('اكلت') || lower.contains('أكلت') || lower.contains('اكل') || 
+                     lower.contains('أكل') || lower.contains('فطار') || lower.contains('فطرت') || 
+                     lower.contains('اتغديت') || lower.contains('غدا') || lower.contains('غداء') || 
+                     lower.contains('اتعشيت') || lower.contains('عشا') || lower.contains('عشاء') || 
+                     lower.contains('ساندوتش') || lower.contains('مطعم') || lower.contains('وجبة') || 
+                     lower.contains('حلويات') || lower.contains('شوكولاته') || lower.contains('food') || 
+                     lower.contains('coffee') || isDrink;
+
+      // 3. Transportation Detection
       final isTransport = lower.contains('مواصلات') || lower.contains('ركبت') || lower.contains('تاكسي') || 
-                          lower.contains('أوبر') || lower.contains('مترو') || lower.contains('بنزين') || 
-                          lower.contains('ميكروباص') || lower.contains('اتوبيس') || lower.contains('transport') ||
-                          lower.contains('uber');
+                          lower.contains('أوبر') || lower.contains('اوبر') || lower.contains('مترو') || 
+                          lower.contains('بنزين') || lower.contains('ميكروباص') || lower.contains('اتوبيس') || 
+                          lower.contains('عربية') || lower.contains('توصيلة') || lower.contains('قطر') || 
+                          lower.contains('تذكرة') || lower.contains('transport') || lower.contains('uber');
 
+      // 4. Bills & Recharge Detection
       final isBills = lower.contains('كارت') || lower.contains('فكه') || lower.contains('فكة') || 
-                      lower.contains('شحنت') || lower.contains('رصيد') || lower.contains('فاتورة') || 
+                      lower.contains('فك') || lower.contains('شحنت') || lower.contains('شحن') || 
+                      lower.contains('رصيد') || lower.contains('مكالمات') || lower.contains('فاتورة') || 
                       lower.contains('كهربا') || lower.contains('مياه') || lower.contains('غاز') || 
-                      lower.contains('نت') || lower.contains('باقة') || lower.contains('recharge') ||
+                      lower.contains('نت') || lower.contains('باقة') || lower.contains('recharge') || 
                       lower.contains('bills');
 
-      final isShopping = lower.contains('سوبرماركت') || lower.contains('اشتريت') || lower.contains('جبت') || 
-                         lower.contains('تسوق') || lower.contains('هدوم') || lower.contains('لبس') || 
-                         lower.contains('shopping') || lower.contains('market');
+      // 5. Shopping Detection
+      final isShopping = lower.contains('سوبرماركت') || lower.contains('ماركت') || lower.contains('اشتريت') || 
+                         lower.contains('شريت') || lower.contains('جبت') || lower.contains('طلبات') || 
+                         lower.contains('حاجات') || lower.contains('تسوق') || lower.contains('هدوم') || 
+                         lower.contains('لبس') || lower.contains('صيدلية') || lower.contains('دوا') || 
+                         lower.contains('دواء') || lower.contains('shopping') || lower.contains('market');
 
       if (hasIncomeKeywords && !isFood && !isTransport && !isBills && !isShopping) {
         isIncome = true;
         category = 'رصيد أولي / مستلم';
+        noteDescription = 'رصيد أولي نزل به';
       } else if (isFood) {
         category = 'طعام ومشروبات (Food & Drinks)';
         isIncome = false;
+        if (lower.contains('ميه') || lower.contains('مايه') || lower.contains('مياه')) {
+          noteDescription = 'مياه';
+        } else if (lower.contains('عصير')) {
+          noteDescription = 'عصير ومشروبات';
+        } else if (lower.contains('قهوة') || lower.contains('شاي') || lower.contains('نسكافيه')) {
+          noteDescription = 'قهوة ومشروبات ساخنة';
+        } else if (lower.contains('فطار') || lower.contains('فطرت')) {
+          noteDescription = 'فطار';
+        } else if (lower.contains('غدا') || lower.contains('غداء') || lower.contains('اتغديت')) {
+          noteDescription = 'غداء';
+        } else if (lower.contains('عشا') || lower.contains('عشاء') || lower.contains('اتعشيت')) {
+          noteDescription = 'عشاء';
+        } else {
+          noteDescription = 'أكل وطعام';
+        }
       } else if (isTransport) {
         category = 'مواصلات وتنقل (Transportation)';
         isIncome = false;
+        noteDescription = 'مواصلات وتنقلات';
       } else if (isBills) {
         category = 'شحن وفواتير (Bills & Recharge)';
         isIncome = false;
+        if (lower.contains('شحن') || lower.contains('شحنت') || lower.contains('كارت') || lower.contains('رصيد')) {
+          noteDescription = 'شحن كارت فكة ورصيد مكالمات';
+        } else {
+          noteDescription = 'فواتير واشتراكات';
+        }
       } else if (isShopping) {
         category = 'تسوق ومشتريات (Shopping)';
         isIncome = false;
-      }
-
-      // Generate a user-friendly concise note description
-      String noteDescription = cleanClause;
-      if (category.contains('طعام')) {
-        noteDescription = 'فطار ومشروبات';
-      } else if (category.contains('مواصلات')) {
-        noteDescription = 'مواصلات وتنقلات';
-      } else if (category.contains('شحن')) {
-        noteDescription = 'شحن كارت فكة ورصيد';
-      } else if (category.contains('تسوق')) {
         noteDescription = 'مشتريات وتسوق';
-      } else if (isIncome) {
-        noteDescription = 'مبلغ أولي نزل به / مستلم';
+      } else {
+        noteDescription = cleanClause.isNotEmpty ? cleanClause : 'مصروف';
       }
 
       transactions.add(Transaction(
@@ -154,9 +178,9 @@ class ExtractNoteUsecase {
       ));
     }
 
-    // Smart Conversational Deduplication & Co-reference Resolution
-    // Resolves cases where speech rephrases or clarifies the same amount:
-    // e.g. "صرفت 70 جنيه على الأكل فأكلت بـ 70 جنيه"
+    // Smart Conversational Deduplication
+    // Merges cases where a user gives a generic clause then specifies it:
+    // e.g. "صرفت 70 جنيه على الأكل فأكلت بـ 70 جنيه" -> Merged into 1 specific Food item.
     final refinedTransactions = <Transaction>[];
 
     for (int i = 0; i < transactions.length; i++) {
@@ -166,13 +190,12 @@ class ExtractNoteUsecase {
       for (int j = 0; j < refinedTransactions.length; j++) {
         final existing = refinedTransactions[j];
 
-        // Check if both are spent and have the exact same amount
         if (existing.type == TransactionType.spent &&
             current.type == TransactionType.spent &&
             (existing.amount - current.amount).abs() < 0.001) {
 
-          final existingIsGeneric = existing.category.contains('عام');
-          final currentIsGeneric = current.category.contains('عام');
+          final existingIsGeneric = existing.category.startsWith('عام');
+          final currentIsGeneric = current.category.startsWith('عام');
 
           if (existingIsGeneric && !currentIsGeneric) {
             // Existing was generic ("صرفت 70"), current is specific ("أكل 70")
@@ -181,13 +204,7 @@ class ExtractNoteUsecase {
             isDuplicate = true;
             break;
           } else if (!existingIsGeneric && currentIsGeneric) {
-            // Existing is already specific ("أكل 70"), current is generic ("صرفت 70")
-            // Discard the generic duplicate!
-            isDuplicate = true;
-            break;
-          } else if (existing.category == current.category) {
-            // Both are identical category and amount (user repeated themselves)
-            // Discard the redundant repetition!
+            // Existing is specific, current is generic -> discard generic
             isDuplicate = true;
             break;
           }
