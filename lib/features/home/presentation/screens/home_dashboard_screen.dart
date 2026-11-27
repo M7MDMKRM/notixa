@@ -38,7 +38,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   }
 
   void _openVoiceRecordingModal(BuildContext context) {
-    // Empty by default as requested by user
     final textController = TextEditingController(text: '');
     bool isListening = false;
 
@@ -94,7 +93,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'تكلم بطبيعتك، أو اكتب الملاحظة، وسيقوم الذكاء الاصطناعي بتفصيل المصروفات والمواعيد تلقائياً.',
+                      'تكلم بطبيعتك أو اكتب الملاحظة وسيقوم الذكاء الاصطناعي بتفصيل المصروفات والمواعيد.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
@@ -147,9 +146,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     TextField(
                       controller: textController,
                       maxLines: 3,
+                      autofocus: false,
                       decoration: InputDecoration(
                         labelText: 'النص المسجل / المكتوب',
-                        hintText: 'تكلم وسيظهر كلامك هنا فوراً، أو اكتب مباشرة...',
+                        hintText: 'تكلم بالمايك أو اكتب الملاحظة هنا مباشرة...',
                         filled: true,
                         fillColor: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
                         border: OutlineInputBorder(
@@ -162,7 +162,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Process Button (Immediately stops mic if running and processes)
+                    // Process Button
                     NotixaButton(
                       label: 'تحليل وتفصيل البنود',
                       onPressed: () async {
@@ -173,7 +173,15 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         }
 
                         final spokenText = textController.text.trim();
-                        if (spokenText.isEmpty) return;
+                        if (spokenText.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('يرجى التحدث عبر المايك أو كتابة نص الملاحظة لتحليلها'),
+                              backgroundColor: NotixaPalette.warning,
+                            ),
+                          );
+                          return;
+                        }
 
                         Navigator.of(ctx).pop();
 

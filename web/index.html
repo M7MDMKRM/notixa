@@ -19,24 +19,36 @@
   <title>Notixa</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Real-time Speech-to-Text Web Bridge -->
+  <!-- Speech and Audio Web Engine -->
   <script>
     var globalRecognition = null;
+    var audioStream = null;
 
-    window.startWebSpeechRecognition = function(callback) {
+    window.startWebSpeechRecognition = async function(callback) {
+      // 1. Explicitly request microphone permission from browser first
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+      } catch (err) {
+        console.warn("Microphone permission prompt failed or denied:", err);
+      }
+
       var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        console.warn("Speech Recognition not supported in this browser.");
+        alert("متصفحك الحالي لا يدعم التعرف الصوتي المباشر عبر الويب (Web Speech API). يمكنك كتابة الملاحظة وسيقوم الذكاء الاصطناعي بتحليلها فوراً!");
         return false;
       }
+
       try {
         if (globalRecognition) {
-          globalRecognition.abort();
+          try { globalRecognition.abort(); } catch(e){}
         }
         globalRecognition = new SpeechRecognition();
         globalRecognition.lang = 'ar-EG';
         globalRecognition.continuous = true;
         globalRecognition.interimResults = true;
+        globalRecognition.maxAlternatives = 1;
 
         globalRecognition.onresult = function(event) {
           var finalTranscript = '';
@@ -49,23 +61,32 @@
         };
 
         globalRecognition.onerror = function(event) {
-          console.warn("Speech Recognition Error:", event.error);
+          console.warn("Speech recognition error:", event.error);
+          if (event.error === 'not-allowed') {
+            alert("يرجى السماح بصلاحية الميكروفون في المتصفح لتسجيل الصوت.");
+          } else if (event.error === 'service-not-allowed') {
+            alert("متصفح Brave يحجب خدمة التعرف الصوتي السحابية لجوجل افتراضياً. يمكنك كتابة النص مباشرة في المربع أدناه لتحليله.");
+          }
         };
 
         globalRecognition.start();
         return true;
       } catch (e) {
-        console.error("Speech Recognition Exception:", e);
+        console.error("Speech Exception:", e);
         return false;
       }
     };
 
     window.stopWebSpeechRecognition = function() {
       if (globalRecognition) {
-        try {
-          globalRecognition.stop();
-        } catch (e) {}
+        try { globalRecognition.stop(); } catch(e){}
         globalRecognition = null;
+      }
+      if (audioStream) {
+        try {
+          audioStream.getTracks().forEach(track => track.stop());
+        } catch(e){}
+        audioStream = null;
       }
     };
   </script>
