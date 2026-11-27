@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:notixa/app/theme/notixa_palette.dart';
 import 'package:notixa/core/design_system/notixa_button.dart';
-import 'package:notixa/core/speech/deepgram_speech_service.dart';
+import 'package:notixa/core/speech/speech_recognition_bridge.dart';
 import 'package:notixa/features/calendar/domain/models/meeting.dart';
 import 'package:notixa/features/calendar/domain/repositories/calendar_repository.dart';
 import 'package:notixa/features/wallet/presentation/bloc/wallet_bloc.dart';
@@ -18,9 +18,6 @@ class HomeDashboardScreen extends StatefulWidget {
 }
 
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
-  final DeepgramSpeechService _speechService = DeepgramSpeechService();
-  bool _isRecording = false;
-  bool _isProcessing = false;
   List<Meeting> _upcomingMeetings = [];
 
   @override
@@ -28,12 +25,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     super.initState();
     _loadUpcomingMeetings();
     context.read<WalletBloc>().add(const LoadTransactionsEvent());
-  }
-
-  @override
-  void dispose() {
-    _speechService.dispose();
-    super.dispose();
   }
 
   Future<void> _loadUpcomingMeetings() async {
@@ -47,10 +38,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   }
 
   void _openVoiceRecordingModal(BuildContext context) {
-    final textController = TextEditingController(
-      text: 'نزلت النهاردة معايا 200 جنيه، وفطرت بـ 20 جنيه، وشحنت كارت فكة بـ 20 جنيه',
-    );
-    bool sheetRecording = false;
+    // Empty by default as requested by user
+    final textController = TextEditingController(text: '');
+    bool isListening = false;
 
     showModalBottomSheet(
       context: context,
@@ -60,6 +50,20 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
+            void toggleListening() {
+              if (isListening) {
+                SpeechRecognitionBridge.stop();
+                setSheetState(() => isListening = false);
+              } else {
+                setSheetState(() => isListening = true);
+                SpeechRecognitionBridge.start((liveText) {
+                  setSheetState(() {
+                    textController.text = liveText;
+                  });
+                });
+              }
+            }
+
             return Container(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
@@ -85,7 +89,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'المساعد الصوتي الذكي 🎙️',
+                      'المساعد الصوتي الذكي',
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
@@ -101,30 +105,28 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
                     // Big Animated Microphone
                     GestureDetector(
-                      onTap: () {
-                        setSheetState(() => sheetRecording = !sheetRecording);
-                      },
+                      onTap: toggleListening,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
-                        width: sheetRecording ? 90 : 80,
-                        height: sheetRecording ? 90 : 80,
+                        width: isListening ? 90 : 80,
+                        height: isListening ? 90 : 80,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
-                            colors: sheetRecording
+                            colors: isListening
                                 ? [NotixaPalette.error, const Color(0xFFDC2626)]
                                 : [NotixaPalette.primary, NotixaPalette.secondary],
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: (sheetRecording ? NotixaPalette.error : NotixaPalette.primary).withOpacity(0.4),
-                              blurRadius: sheetRecording ? 24 : 16,
-                              spreadRadius: sheetRecording ? 4 : 0,
+                              color: (isListening ? NotixaPalette.error : NotixaPalette.primary).withOpacity(0.4),
+                              blurRadius: isListening ? 24 : 16,
+                              spreadRadius: isListening ? 4 : 0,
                             ),
                           ],
                         ),
                         child: Icon(
-                          sheetRecording ? Icons.stop : Icons.mic,
+                          isListening ? Icons.stop : Icons.mic,
                           color: Colors.white,
                           size: 38,
                         ),
@@ -132,22 +134,22 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      sheetRecording ? 'جاري الاستماع... اضغط للإيقاف' : 'اضغط على المايك للتحدث',
+                      isListening ? 'جاري الاستماع... تكلم الآن' : 'اضغط على المايك للتحدث',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: sheetRecording ? NotixaPalette.error : NotixaPalette.primary,
+                        color: isListening ? NotixaPalette.error : NotixaPalette.primary,
                       ),
                     ),
                     const SizedBox(height: 20),
 
-                    // Editable Speech / Text Field
+                    // Live Speech / Text Field
                     TextField(
                       controller: textController,
                       maxLines: 3,
                       decoration: InputDecoration(
                         labelText: 'النص المسجل / المكتوب',
-                        hintText: 'تكلم أو اكتب هنا...',
+                        hintText: 'تكلم وسيظهر كلامك هنا فوراً، أو اكتب مباشرة...',
                         filled: true,
                         fillColor: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
                         border: OutlineInputBorder(
@@ -158,35 +160,18 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
-
-                    // Quick Preset Chips for Easy Testing
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ActionChip(
-                          avatar: const Icon(Icons.flash_on, size: 16, color: NotixaPalette.primary),
-                          label: const Text('200 معايا، فطرت بـ 20 وشحنت بـ 20', style: TextStyle(fontSize: 12)),
-                          onPressed: () {
-                            textController.text = 'نزلت النهاردة معايا 200 جنيه، وفطرت بـ 20 جنيه، وشحنت كارت فكة بـ 20 جنيه';
-                          },
-                        ),
-                        ActionChip(
-                          avatar: const Icon(Icons.flash_on, size: 16, color: NotixaPalette.primary),
-                          label: const Text('قهوة 45 جنيه واجتماع الساعة 5 مساءً', style: TextStyle(fontSize: 12)),
-                          onPressed: () {
-                            textController.text = 'اشتريت قهوة بـ 45 جنيه وعندي اجتماع مع المدير الساعة 5 مساءً';
-                          },
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 24),
 
-                    // Submit Button
+                    // Process Button (Immediately stops mic if running and processes)
                     NotixaButton(
-                      label: 'تحليل وتفصيل البنود بالذكاء الاصطناعي ⚡',
+                      label: 'تحليل وتفصيل البنود',
                       onPressed: () async {
+                        // Stop listening immediately if still active
+                        if (isListening) {
+                          SpeechRecognitionBridge.stop();
+                          isListening = false;
+                        }
+
                         final spokenText = textController.text.trim();
                         if (spokenText.isEmpty) return;
 
@@ -226,7 +211,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // Header without emojis
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -242,7 +227,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'أهلاً بك 👋',
+                        'أهلاً بك',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -408,7 +393,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               ),
               const SizedBox(width: 10),
               const Text(
-                'محرك الذكاء الاصطناعي الذكي',
+                'محرك الذكاء الاصطناعي',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

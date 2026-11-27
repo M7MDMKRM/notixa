@@ -17,25 +17,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<Map<String, dynamic>> _slides = [
     {
-      'title': 'Welcome to Notixa 🤖',
+      'title': 'Welcome to Notixa',
       'subtitle': 'Your AI personal assistant for instant voice notes, scheduled meetings, and smart expense tracking.',
       'icon': Icons.auto_awesome,
       'color': NotixaPalette.primary,
     },
     {
-      'title': 'Speak Freely 🎙️',
+      'title': 'Speak Freely',
       'subtitle': 'Record natural voice notes. Notixa converts speech into structured tasks, calendar appointments, and financial records.',
       'icon': Icons.mic_none,
       'color': NotixaPalette.tertiary,
     },
     {
-      'title': 'Smart Wallet & Expenses 💳',
+      'title': 'Smart Wallet & Expenses',
       'subtitle': 'Keep track of all your income (Received) and expenses (Spent) with automatic categorizations and currency support.',
       'icon': Icons.account_balance_wallet_outlined,
       'color': NotixaPalette.received,
     },
     {
-      'title': 'Schedule & Alarms ⏰',
+      'title': 'Schedule & Alarms',
       'subtitle': 'Never miss a meeting. Notixa automatically syncs with your calendar and sounds proactive reminders.',
       'icon': Icons.calendar_month_outlined,
       'color': NotixaPalette.secondary,

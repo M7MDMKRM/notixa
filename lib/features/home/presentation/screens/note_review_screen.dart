@@ -41,7 +41,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('تم حفظ جميع البيانات في المحفظة والتقويم بنجاح! 🎉'),
+          content: Text('تم حفظ جميع البيانات في المحفظة والتقويم بنجاح'),
           backgroundColor: NotixaPalette.received,
         ),
       );
@@ -130,7 +130,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '📊 ملخص الحسبة المالية المستخرجة',
+                      'ملخص الحسبة المالية المستخرجة',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                     const SizedBox(height: 12),
@@ -273,7 +273,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
             ],
 
             NotixaButton(
-              label: 'حفظ جميع البنود في التطبيق ✅',
+              label: 'حفظ جميع البنود في التطبيق',
               isLoading: _isSaving,
               onPressed: _saveAll,
             ),

@@ -153,8 +153,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       value: _selectedLang,
                       underline: const SizedBox(),
                       items: const [
-                        DropdownMenuItem(value: 'ar', child: Text('العربية 🇪🇬')),
-                        DropdownMenuItem(value: 'en', child: Text('English 🇺🇸')),
+                        DropdownMenuItem(value: 'ar', child: Text('العربية')),
+                        DropdownMenuItem(value: 'en', child: Text('English')),
                       ],
                       onChanged: (val) {
                         if (val != null) {

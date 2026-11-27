@@ -18,6 +18,57 @@
 
   <title>Notixa</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Real-time Speech-to-Text Web Bridge -->
+  <script>
+    var globalRecognition = null;
+
+    window.startWebSpeechRecognition = function(callback) {
+      var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.warn("Speech Recognition not supported in this browser.");
+        return false;
+      }
+      try {
+        if (globalRecognition) {
+          globalRecognition.abort();
+        }
+        globalRecognition = new SpeechRecognition();
+        globalRecognition.lang = 'ar-EG';
+        globalRecognition.continuous = true;
+        globalRecognition.interimResults = true;
+
+        globalRecognition.onresult = function(event) {
+          var finalTranscript = '';
+          for (var i = 0; i < event.results.length; ++i) {
+            finalTranscript += event.results[i][0].transcript;
+          }
+          if (callback && typeof callback === 'function') {
+            callback(finalTranscript);
+          }
+        };
+
+        globalRecognition.onerror = function(event) {
+          console.warn("Speech Recognition Error:", event.error);
+        };
+
+        globalRecognition.start();
+        return true;
+      } catch (e) {
+        console.error("Speech Recognition Exception:", e);
+        return false;
+      }
+    };
+
+    window.stopWebSpeechRecognition = function() {
+      if (globalRecognition) {
+        try {
+          globalRecognition.stop();
+        } catch (e) {}
+        globalRecognition = null;
+      }
+    };
+  </script>
 </head>
 <body style="background-color: #0F172A; margin: 0; padding: 0;">
   <script src="flutter_bootstrap.js" async></script>
