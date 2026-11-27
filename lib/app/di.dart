@@ -19,7 +19,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
   // Network & Dio
-  sl.registerLazySingleton<DioFactory>(() => DioFactory(sl()));
+  sl.registerLazySingleton<DioFactory>(() => DioFactory(sl<TokenStorage>()));
   sl.registerLazySingleton<Dio>(() => sl<DioFactory>().createDio());
 
   // Services
@@ -27,19 +27,19 @@ Future<void> initDependencies() async {
 
   // Repositories
   sl.registerLazySingleton<WalletRepository>(
-    () => WalletRepositoryImpl(sl(), sl()),
+    () => WalletRepositoryImpl(sl<Dio>(), sl<AppDatabase>()),
   );
   sl.registerLazySingleton<CalendarRepository>(
-    () => CalendarRepositoryImpl(sl(), sl()),
+    () => CalendarRepositoryImpl(sl<Dio>(), sl<AppDatabase>()),
   );
 
   // Usecases
   sl.registerLazySingleton<ExtractNoteUsecase>(
-    () => ExtractNoteUsecase(sl()),
+    () => ExtractNoteUsecase(sl<Dio>()),
   );
 
   // BLoCs
   sl.registerFactory<WalletBloc>(
-    () => WalletBloc(sl()),
+    () => WalletBloc(sl<WalletRepository>()),
   );
 }
