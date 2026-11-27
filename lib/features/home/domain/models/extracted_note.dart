@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import '../../calendar/domain/models/meeting.dart';
-import '../../wallet/domain/models/transaction.dart';
+import 'package:notixa/features/calendar/domain/models/meeting.dart';
+import 'package:notixa/features/wallet/domain/models/transaction.dart';
 
 class ExtractedNote extends Equatable {
   final String rawText;

@@ -21,7 +21,7 @@ class NotixaTheme {
         onSurface: NotixaPalette.textPrimaryDark,
       ),
       textTheme: NotixaTypography.darkTextTheme,
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: NotixaPalette.darkCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -65,7 +65,7 @@ class NotixaTheme {
         onSurface: NotixaPalette.textPrimaryLight,
       ),
       textTheme: NotixaTypography.lightTextTheme,
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: NotixaPalette.lightCard,
         elevation: 0,
         shape: RoundedRectangleBorder(

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../app/theme/notixa_palette.dart';
-import '../../../../core/design_system/notixa_app_bar.dart';
-import '../../../../core/design_system/notixa_button.dart';
-import '../../../calendar/domain/repositories/calendar_repository.dart';
-import '../../../wallet/presentation/bloc/wallet_bloc.dart';
-import '../../domain/models/extracted_note.dart';
+import 'package:notixa/app/theme/notixa_palette.dart';
+import 'package:notixa/core/design_system/notixa_app_bar.dart';
+import 'package:notixa/core/design_system/notixa_button.dart';
+import 'package:notixa/features/calendar/domain/models/meeting.dart';
+import 'package:notixa/features/calendar/domain/repositories/calendar_repository.dart';
+import 'package:notixa/features/home/domain/models/extracted_note.dart';
+import 'package:notixa/features/wallet/domain/models/transaction.dart';
+import 'package:notixa/features/wallet/presentation/bloc/wallet_bloc.dart';
 
 class NoteReviewScreen extends StatefulWidget {
   final ExtractedNote note;
@@ -100,7 +102,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
-              ...widget.note.extractedTransactions.map((t) => Container(
+              ...widget.note.extractedTransactions.map((Transaction t) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -153,7 +155,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
-              ...widget.note.extractedMeetings.map((m) => Container(
+              ...widget.note.extractedMeetings.map((Meeting m) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(

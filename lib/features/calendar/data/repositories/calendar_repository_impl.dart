@@ -1,16 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../core/data/local/app_database.dart';
-import '../../../../core/domain/result.dart';
-import '../../../../core/error/failures.dart';
-import '../models/meeting.dart';
-
-abstract class CalendarRepository {
-  Future<Result<List<Meeting>>> getMeetings({DateTime? start, DateTime? end});
-  Future<Result<Meeting>> createMeeting(Meeting meeting);
-  Future<Result<Meeting>> updateMeeting(Meeting meeting);
-  Future<Result<void>> deleteMeeting(String id);
-}
+import 'package:notixa/core/data/local/app_database.dart';
+import 'package:notixa/core/domain/result.dart';
+import 'package:notixa/core/error/failures.dart';
+import '../../domain/models/meeting.dart';
+import '../../domain/repositories/calendar_repository.dart';
 
 class CalendarRepositoryImpl implements CalendarRepository {
   final Dio _dio;
