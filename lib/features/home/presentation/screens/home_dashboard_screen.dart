@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import '../../../../app/theme/notixa_palette.dart';
-import '../../../../core/speech/deepgram_speech_service.dart';
-import '../../../calendar/domain/models/meeting.dart';
-import '../../../calendar/domain/repositories/calendar_repository.dart';
-import '../../../wallet/presentation/bloc/wallet_bloc.dart';
+import 'package:notixa/app/theme/notixa_palette.dart';
+import 'package:notixa/core/design_system/notixa_button.dart';
+import 'package:notixa/core/speech/deepgram_speech_service.dart';
+import 'package:notixa/features/calendar/domain/models/meeting.dart';
+import 'package:notixa/features/calendar/domain/repositories/calendar_repository.dart';
+import 'package:notixa/features/wallet/presentation/bloc/wallet_bloc.dart';
 import '../../domain/usecases/extract_note_usecase.dart';
 import 'note_review_screen.dart';
 
@@ -45,44 +46,178 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     }
   }
 
-  Future<void> _toggleRecording() async {
-    if (_isRecording) {
-      setState(() {
-        _isRecording = false;
-        _isProcessing = true;
-      });
+  void _openVoiceRecordingModal(BuildContext context) {
+    final textController = TextEditingController(
+      text: 'نزلت النهاردة معايا 200 جنيه، وفطرت بـ 20 جنيه، وشحنت كارت فكة بـ 20 جنيه',
+    );
+    bool sheetRecording = false;
 
-      final stopResult = await _speechService.stopRecording();
-      final audioPath = stopResult.dataOrNull;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+                top: 24,
+                left: 20,
+                right: 20,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? NotixaPalette.darkSurface : NotixaPalette.lightSurface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'المساعد الصوتي الذكي 🎙️',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'تكلم بطبيعتك، أو اكتب الملاحظة، وسيقوم الذكاء الاصطناعي بتفصيل المصروفات والمواعيد تلقائياً.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? NotixaPalette.textSecondaryDark : NotixaPalette.textSecondaryLight,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
-      // Extract note
-      final extractor = context.read<ExtractNoteUsecase>();
-      final extractResult = await extractor(
-        rawText: 'اشتريت قهوة وغداء ب 120 جنية وعندي اجتماع مع الفريق الساعة 4 العصر',
-        audioPath: audioPath,
-      );
+                    // Big Animated Microphone
+                    GestureDetector(
+                      onTap: () {
+                        setSheetState(() => sheetRecording = !sheetRecording);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: sheetRecording ? 90 : 80,
+                        height: sheetRecording ? 90 : 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: sheetRecording
+                                ? [NotixaPalette.error, const Color(0xFFDC2626)]
+                                : [NotixaPalette.primary, NotixaPalette.secondary],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (sheetRecording ? NotixaPalette.error : NotixaPalette.primary).withOpacity(0.4),
+                              blurRadius: sheetRecording ? 24 : 16,
+                              spreadRadius: sheetRecording ? 4 : 0,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          sheetRecording ? Icons.stop : Icons.mic,
+                          color: Colors.white,
+                          size: 38,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      sheetRecording ? 'جاري الاستماع... اضغط للإيقاف' : 'اضغط على المايك للتحدث',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: sheetRecording ? NotixaPalette.error : NotixaPalette.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
 
-      setState(() => _isProcessing = false);
+                    // Editable Speech / Text Field
+                    TextField(
+                      controller: textController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'النص المسجل / المكتوب',
+                        hintText: 'تكلم أو اكتب هنا...',
+                        filled: true,
+                        fillColor: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
 
-      if (extractResult.isSuccess && mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => NoteReviewScreen(note: extractResult.dataOrNull!),
-          ),
+                    // Quick Preset Chips for Easy Testing
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ActionChip(
+                          avatar: const Icon(Icons.flash_on, size: 16, color: NotixaPalette.primary),
+                          label: const Text('200 معايا، فطرت بـ 20 وشحنت بـ 20', style: TextStyle(fontSize: 12)),
+                          onPressed: () {
+                            textController.text = 'نزلت النهاردة معايا 200 جنيه، وفطرت بـ 20 جنيه، وشحنت كارت فكة بـ 20 جنيه';
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.flash_on, size: 16, color: NotixaPalette.primary),
+                          label: const Text('قهوة 45 جنيه واجتماع الساعة 5 مساءً', style: TextStyle(fontSize: 12)),
+                          onPressed: () {
+                            textController.text = 'اشتريت قهوة بـ 45 جنيه وعندي اجتماع مع المدير الساعة 5 مساءً';
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Submit Button
+                    NotixaButton(
+                      label: 'تحليل وتفصيل البنود بالذكاء الاصطناعي ⚡',
+                      onPressed: () async {
+                        final spokenText = textController.text.trim();
+                        if (spokenText.isEmpty) return;
+
+                        Navigator.of(ctx).pop();
+
+                        final extractor = context.read<ExtractNoteUsecase>();
+                        final extractResult = await extractor(rawText: spokenText);
+
+                        if (extractResult.isSuccess && mounted) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => NoteReviewScreen(note: extractResult.dataOrNull!),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
-      }
-    } else {
-      final startResult = await _speechService.startRecording();
-      if (startResult.isSuccess) {
-        setState(() => _isRecording = true);
-      }
-    }
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final todayStr = DateFormat('EEEE, d MMMM').format(DateTime.now());
+    final todayStr = DateFormat('EEEE, d MMMM', 'ar').format(DateTime.now());
 
     return Scaffold(
       body: SafeArea(
@@ -107,7 +242,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'Hello, Friend 👋',
+                        'أهلاً بك 👋',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -128,8 +263,43 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               _buildFeaturedCard(isDark),
               const SizedBox(height: 24),
 
-              // Voice Action Button
-              _buildVoiceRecordButton(isDark),
+              // Main Voice Action Button
+              Center(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _openVoiceRecordingModal(context),
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [NotixaPalette.primary, NotixaPalette.secondary],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: NotixaPalette.primary.withOpacity(0.4),
+                              blurRadius: 18,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.mic, color: Colors.white, size: 36),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'اضغط للتسجيل الصوتي أو كتابة الملاحظة',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: NotixaPalette.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 28),
 
               // Upcoming Meetings Section
@@ -137,12 +307,12 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Upcoming Meetings',
+                    'اجتماعات ومواعيد اليوم',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   TextButton(
                     onPressed: () {},
-                    child: const Text('See All'),
+                    child: const Text('عرض الكل'),
                   ),
                 ],
               ),
@@ -172,7 +342,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Wallet Balance',
+                                'رصيد المحفظة الحالي',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight,
@@ -238,7 +408,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               ),
               const SizedBox(width: 10),
               const Text(
-                'Notixa AI Engine',
+                'محرك الذكاء الاصطناعي الذكي',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -249,7 +419,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           const SizedBox(height: 14),
           const Text(
-            'Speak naturally about your day.',
+            'تحدث بطبيعتك عن يومك ومصروفاتك.',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -258,62 +428,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Notixa extracts tasks, appointments, expenses, and notes automatically.',
+            'يقوم التطبيق بتفصيل كل العمليات والمواعيد تلقائياً وحساب المتبقي.',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVoiceRecordButton(bool isDark) {
-    return Center(
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: _toggleRecording,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: _isRecording ? 84 : 76,
-              height: _isRecording ? 84 : 76,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: _isRecording
-                      ? [NotixaPalette.error, const Color(0xFFDC2626)]
-                      : [NotixaPalette.primary, NotixaPalette.secondary],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: (_isRecording ? NotixaPalette.error : NotixaPalette.primary).withOpacity(0.4),
-                    blurRadius: _isRecording ? 24 : 16,
-                    spreadRadius: _isRecording ? 4 : 0,
-                  ),
-                ],
-              ),
-              child: _isProcessing
-                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                  : Icon(
-                      _isRecording ? Icons.stop : Icons.mic,
-                      color: Colors.white,
-                      size: 34,
-                    ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _isRecording
-                ? 'Recording... Tap to stop'
-                : (_isProcessing ? 'AI is extracting notes...' : 'Tap to speak voice note'),
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: _isRecording
-                  ? NotixaPalette.error
-                  : (isDark ? NotixaPalette.textSecondaryDark : NotixaPalette.textSecondaryLight),
             ),
           ),
         ],
@@ -372,7 +490,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       ),
       child: Center(
         child: Text(
-          'No upcoming meetings today',
+          'لا توجد اجتماعات مسجلة لليوم',
           style: TextStyle(
             fontSize: 13,
             color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:notixa/app/theme/notixa_palette.dart';
 import 'package:notixa/core/design_system/notixa_app_bar.dart';
 import 'package:notixa/core/design_system/notixa_button.dart';
@@ -40,7 +41,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Saved to Notixa successfully!'),
+          content: Text('تم حفظ جميع البيانات في المحفظة والتقويم بنجاح! 🎉'),
           backgroundColor: NotixaPalette.received,
         ),
       );
@@ -52,14 +53,30 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Calculate Summary Totals
+    double totalReceived = 0;
+    double totalSpent = 0;
+    String currency = 'EGP';
+
+    for (final t in widget.note.extractedTransactions) {
+      currency = t.currency;
+      if (t.isIncome) {
+        totalReceived += t.amount;
+      } else {
+        totalSpent += t.amount;
+      }
+    }
+
+    double netRemaining = totalReceived > 0 ? (totalReceived - totalSpent) : 0;
+
     return Scaffold(
-      appBar: const NotixaAppBar(title: 'Review AI Extracted Note'),
+      appBar: const NotixaAppBar(title: 'مراجعة استخراج الذكاء الاصطناعي'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Raw Transcribed Text Card
+            // Transcribed Text Card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(18),
@@ -76,7 +93,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
                       const Icon(Icons.mic, color: NotixaPalette.primary, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        'Transcribed Voice Note',
+                        'النص المسموع من الميكروفون',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -87,21 +104,86 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    widget.note.rawText.isEmpty ? 'No text recorded' : widget.note.rawText,
-                    style: const TextStyle(fontSize: 16, height: 1.4),
+                    widget.note.rawText.isEmpty ? 'لا يوجد نص مسجل' : widget.note.rawText,
+                    style: const TextStyle(fontSize: 16, height: 1.5, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // Extracted Transactions
-            if (widget.note.extractedTransactions.isNotEmpty) ...[
-              const Text(
-                'Extracted Expenses & Income',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            // Financial Summary Card (If multiple transactions detected)
+            if (widget.note.extractedTransactions.length > 1) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                        : [const Color(0xFFF1F5F9), const Color(0xFFFFFFFF)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: NotixaPalette.primary.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '📊 ملخص الحسبة المالية المستخرجة',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (totalReceived > 0)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('المبلغ الأساسي/المستلم', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              Text('$totalReceived $currency', style: const TextStyle(color: NotixaPalette.received, fontWeight: FontWeight.bold, fontSize: 16)),
+                            ],
+                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('إجمالي المصروفات', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text('$totalSpent $currency', style: const TextStyle(color: NotixaPalette.spent, fontWeight: FontWeight.bold, fontSize: 16)),
+                          ],
+                        ),
+                        if (totalReceived > 0)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('المتبقي الصافي', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              Text('$netRemaining $currency', style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 24),
+            ],
+
+            // Extracted Transactions Section
+            if (widget.note.extractedTransactions.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'العمليات والمصروفات المستخرجة',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '${widget.note.extractedTransactions.length} بنود',
+                    style: TextStyle(fontSize: 13, color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               ...widget.note.extractedTransactions.map((Transaction t) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
@@ -121,21 +203,25 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
                       child: Icon(
                         t.isIncome ? Icons.arrow_downward : Icons.arrow_upward,
                         color: t.isIncome ? NotixaPalette.received : NotixaPalette.spent,
-                        size: 18,
+                        size: 20,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(t.category, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text(t.type.name, style: TextStyle(fontSize: 12, color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight)),
+                          Text(t.category, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          const SizedBox(height: 2),
+                          Text(
+                            t.note ?? (t.isIncome ? 'إيراد / رصيد' : 'مصروف'),
+                            style: TextStyle(fontSize: 12, color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight),
+                          ),
                         ],
                       ),
                     ),
                     Text(
-                      '${t.amount} ${t.currency}',
+                      '${t.isIncome ? '+' : '-'}${t.amount} ${t.currency}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -148,13 +234,13 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
               const SizedBox(height: 20),
             ],
 
-            // Extracted Meetings
+            // Extracted Meetings Section
             if (widget.note.extractedMeetings.isNotEmpty) ...[
               const Text(
-                'Extracted Meetings & Events',
+                'المواعيد والاجتماعات المكتشفة',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               ...widget.note.extractedMeetings.map((Meeting m) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
@@ -165,16 +251,17 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.event, color: NotixaPalette.tertiary),
-                    const SizedBox(width: 12),
+                    const Icon(Icons.event, color: NotixaPalette.tertiary, size: 24),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(m.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(m.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          const SizedBox(height: 4),
                           Text(
-                            'Today at ${m.startTime.hour}:${m.startTime.minute.toString().padLeft(2, '0')}',
-                            style: TextStyle(fontSize: 12, color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight),
+                            'الساعة ${DateFormat('hh:mm a').format(m.startTime)}',
+                            style: const TextStyle(fontSize: 12, color: NotixaPalette.primary, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
@@ -186,7 +273,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
             ],
 
             NotixaButton(
-              label: 'Save All to Notixa',
+              label: 'حفظ جميع البنود في التطبيق ✅',
               isLoading: _isSaving,
               onPressed: _saveAll,
             ),
