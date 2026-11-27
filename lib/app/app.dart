@@ -1,6 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import '../features/calendar/domain/repositories/calendar_repository.dart';
 import '../features/home/domain/usecases/extract_note_usecase.dart';
 import '../features/home/presentation/screens/main_navigation_screen.dart';
@@ -9,6 +9,51 @@ import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/wallet/presentation/bloc/wallet_bloc.dart';
 import 'di.dart';
 import 'theme/notixa_theme.dart';
+
+class _SafeMaterialLocalizationsDelegate extends LocalizationsDelegate<MaterialLocalizations> {
+  const _SafeMaterialLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) => true;
+
+  @override
+  Future<MaterialLocalizations> load(Locale locale) {
+    return DefaultMaterialLocalizations.load(locale);
+  }
+
+  @override
+  bool shouldReload(_SafeMaterialLocalizationsDelegate old) => false;
+}
+
+class _SafeWidgetsLocalizationsDelegate extends LocalizationsDelegate<WidgetsLocalizations> {
+  const _SafeWidgetsLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) => true;
+
+  @override
+  Future<WidgetsLocalizations> load(Locale locale) {
+    return DefaultWidgetsLocalizations.load(locale);
+  }
+
+  @override
+  bool shouldReload(_SafeWidgetsLocalizationsDelegate old) => false;
+}
+
+class _SafeCupertinoLocalizationsDelegate extends LocalizationsDelegate<CupertinoLocalizations> {
+  const _SafeCupertinoLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) => true;
+
+  @override
+  Future<CupertinoLocalizations> load(Locale locale) {
+    return DefaultCupertinoLocalizations.load(locale);
+  }
+
+  @override
+  bool shouldReload(_SafeCupertinoLocalizationsDelegate old) => false;
+}
 
 class NotixaApp extends StatefulWidget {
   const NotixaApp({super.key});
@@ -46,9 +91,9 @@ class _NotixaAppState extends State<NotixaApp> {
             Locale('en'),
           ],
           localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
+            _SafeMaterialLocalizationsDelegate(),
+            _SafeWidgetsLocalizationsDelegate(),
+            _SafeCupertinoLocalizationsDelegate(),
           ],
           home: !_isOnboarded
               ? OnboardingScreen(onFinish: () => setState(() => _isOnboarded = true))

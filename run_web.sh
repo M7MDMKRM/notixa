@@ -18,6 +18,9 @@ export PATH="$PATH:$HOME/flutter/bin"
 echo "⚡ Flutter version:"
 flutter --version
 
+echo "🧹 Cleaning stale build caches..."
+flutter clean
+
 echo "📦 Installing project packages..."
 flutter pub get
 

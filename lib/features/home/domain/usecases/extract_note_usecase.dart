@@ -11,9 +11,20 @@ class ExtractNoteUsecase {
 
   ExtractNoteUsecase([dynamic _]);
 
+  /// Normalizes Arabic-Indic digits (٠-٩) to standard ASCII digits (0-9)
+  String _normalizeDigits(String input) {
+    const arabicIndic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const standard = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    var result = input;
+    for (int i = 0; i < 10; i++) {
+      result = result.replaceAll(arabicIndic[i], standard[i]);
+    }
+    return result;
+  }
+
   Future<Result<ExtractedNote>> call({required String rawText, String? audioPath}) async {
-    final text = rawText.trim();
-    if (text.isEmpty) {
+    final originalTrimmed = rawText.trim();
+    if (originalTrimmed.isEmpty) {
       return Success(ExtractedNote(
         rawText: rawText,
         audioPath: audioPath,
@@ -22,6 +33,9 @@ class ExtractNoteUsecase {
         createdAt: DateTime.now(),
       ));
     }
+
+    // Normalize Eastern Arabic numerals
+    final text = _normalizeDigits(originalTrimmed);
 
     final transactions = <Transaction>[];
     final meetings = <Meeting>[];
@@ -40,12 +54,15 @@ class ExtractNoteUsecase {
       final amount = double.tryParse(m.group(1) ?? '') ?? 0.0;
       if (amount <= 0) continue;
 
-      // Extract clause from previous match end to current match end
-      final rawClause = text.substring(lastEnd, m.end).trim();
-      lastEnd = m.end;
+      // Determine clause boundary
+      // Look back to last match end, and look forward slightly past current match
+      final clauseStart = lastEnd;
+      final clauseEnd = (i < matches.length - 1) ? matches[i + 1].start : text.length;
+      final rawClause = text.substring(clauseStart, clauseEnd).trim();
+      lastEnd = clauseEnd;
 
-      // Clean leading connectors (e.g. 'و', 'ثم', commas)
-      String cleanClause = rawClause.replaceFirst(RegExp(r'^[و\s،,]+'), '').trim();
+      // Clean leading/trailing connectors
+      String cleanClause = rawClause.replaceFirst(RegExp(r'^[و\s،,ثمبعدين]+'), '').trim();
       final lower = cleanClause.toLowerCase();
 
       // Detect Currency
@@ -61,62 +78,69 @@ class ExtractNoteUsecase {
       }
 
       // Detect Category & Type (Income vs Expense)
-      String category = 'عام';
+      String category = 'عام ومصروفات';
       bool isIncome = false;
 
       // Check if it's an initial amount / income
-      if (lower.contains('معايا') || lower.contains('نزلت ب') || lower.contains('استلمت') || 
-          lower.contains('قبضت') || lower.contains('جالي') || lower.contains('دخل') || 
-          lower.contains('حولي') || lower.contains('حولتلي') || lower.contains('مكافأة') ||
-          lower.contains('received') || lower.contains('income') || lower.contains('salary')) {
-        // Only mark income if it doesn't also explicitly say spent/ate/recharged in the same clause
-        if (!lower.contains('فطرت') && !lower.contains('شحنت') && !lower.contains('مواصلات') && !lower.contains('صرفت')) {
-          isIncome = true;
-          category = 'رصيد أولي / مستلم';
-        }
-      }
+      final hasIncomeKeywords = lower.contains('معايا') || lower.contains('نزلت ب') || 
+                                lower.contains('استلمت') || lower.contains('قبضت') || 
+                                lower.contains('جالي') || lower.contains('دخل') || 
+                                lower.contains('حولي') || lower.contains('حولتلي') || 
+                                lower.contains('مكافأة') || lower.contains('راتب') ||
+                                lower.contains('مرتب') || lower.contains('received') || 
+                                lower.contains('income') || lower.contains('salary');
 
-      // Check Specific Expense Categories
-      if (lower.contains('فطار') || lower.contains('فطرت') || lower.contains('أكل') || 
-          lower.contains('غدا') || lower.contains('غداء') || lower.contains('عشا') || 
-          lower.contains('عشاء') || lower.contains('ساندوتش') || lower.contains('قهوة') || 
-          lower.contains('شاي') || lower.contains('مطعم') || lower.contains('عصير') ||
-          lower.contains('food') || lower.contains('coffee')) {
+      // Expense keywords
+      final isFood = lower.contains('فطار') || lower.contains('فطرت') || lower.contains('أكل') || 
+                     lower.contains('غدا') || lower.contains('غداء') || lower.contains('عشا') || 
+                     lower.contains('عشاء') || lower.contains('ساندوتش') || lower.contains('قهوة') || 
+                     lower.contains('شاي') || lower.contains('مطعم') || lower.contains('عصير') ||
+                     lower.contains('food') || lower.contains('coffee');
+
+      final isTransport = lower.contains('مواصلات') || lower.contains('ركبت') || lower.contains('تاكسي') || 
+                          lower.contains('أوبر') || lower.contains('مترو') || lower.contains('بنزين') || 
+                          lower.contains('ميكروباص') || lower.contains('اتوبيس') || lower.contains('transport') ||
+                          lower.contains('uber');
+
+      final isBills = lower.contains('كارت') || lower.contains('فكه') || lower.contains('فكة') || 
+                      lower.contains('شحنت') || lower.contains('رصيد') || lower.contains('فاتورة') || 
+                      lower.contains('كهربا') || lower.contains('مياه') || lower.contains('غاز') || 
+                      lower.contains('نت') || lower.contains('باقة') || lower.contains('recharge') ||
+                      lower.contains('bills');
+
+      final isShopping = lower.contains('سوبرماركت') || lower.contains('اشتريت') || lower.contains('جبت') || 
+                         lower.contains('تسوق') || lower.contains('هدوم') || lower.contains('لبس') || 
+                         lower.contains('shopping') || lower.contains('market');
+
+      if (hasIncomeKeywords && !isFood && !isTransport && !isBills && !isShopping) {
+        isIncome = true;
+        category = 'رصيد أولي / مستلم';
+      } else if (isFood) {
         category = 'طعام ومشروبات (Food & Drinks)';
         isIncome = false;
-      } else if (lower.contains('مواصلات') || lower.contains('ركبت') || lower.contains('تاكسي') || 
-                 lower.contains('أوبر') || lower.contains('مترو') || lower.contains('بنزين') || 
-                 lower.contains('ميكروباص') || lower.contains('اتوبيس') || lower.contains('transport') ||
-                 lower.contains('uber')) {
+      } else if (isTransport) {
         category = 'مواصلات وتنقل (Transportation)';
         isIncome = false;
-      } else if (lower.contains('كارت') || lower.contains('فكه') || lower.contains('فكة') || 
-                 lower.contains('شحنت') || lower.contains('رصيد') || lower.contains('فاتورة') || 
-                 lower.contains('كهربا') || lower.contains('مياه') || lower.contains('غاز') || 
-                 lower.contains('نت') || lower.contains('باقة') || lower.contains('recharge') ||
-                 lower.contains('bills')) {
+      } else if (isBills) {
         category = 'شحن وفواتير (Bills & Recharge)';
         isIncome = false;
-      } else if (lower.contains('سوبرماركت') || lower.contains('اشتريت') || lower.contains('جبت') || 
-                 lower.contains('تسوق') || lower.contains('هدوم') || lower.contains('لبس') || 
-                 lower.contains('shopping') || lower.contains('market')) {
+      } else if (isShopping) {
         category = 'تسوق ومشتريات (Shopping)';
         isIncome = false;
       }
 
-      // Generate a user-friendly note description
+      // Generate a user-friendly concise note description
       String noteDescription = cleanClause;
-      if (noteDescription.length > 50) {
-        // Try to shorten to the relevant action
-        if (category.contains('طعام')) {
-          noteDescription = 'فطار وأكل ومشروبات';
-        } else if (category.contains('مواصلات')) {
-          noteDescription = 'مواصلات وتنقلات';
-        } else if (category.contains('شحن')) {
-          noteDescription = 'شحن كارت فكة ورصيد';
-        } else if (isIncome) {
-          noteDescription = 'رصيد ومبلغ أولي';
-        }
+      if (category.contains('طعام')) {
+        noteDescription = 'فطار ومشروبات';
+      } else if (category.contains('مواصلات')) {
+        noteDescription = 'مواصلات وتنقلات';
+      } else if (category.contains('شحن')) {
+        noteDescription = 'شحن كارت فكة ورصيد';
+      } else if (category.contains('تسوق')) {
+        noteDescription = 'مشتريات وتسوق';
+      } else if (isIncome) {
+        noteDescription = 'مبلغ أولي نزل به / مستلم';
       }
 
       transactions.add(Transaction(
@@ -165,7 +189,7 @@ class ExtractNoteUsecase {
     }
 
     return Success(ExtractedNote(
-      rawText: text,
+      rawText: originalTrimmed,
       audioPath: audioPath,
       extractedTransactions: transactions,
       extractedMeetings: meetings,
