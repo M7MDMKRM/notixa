@@ -21,5 +21,8 @@ flutter --version
 echo "📦 Installing project packages..."
 flutter pub get
 
-echo "🌐 Launching Notixa Web on port 8080..."
+echo "🌐 Enabling web support..."
+flutter config --enable-web
+
+echo "🚀 Launching Notixa Web on port 8080..."
 flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0

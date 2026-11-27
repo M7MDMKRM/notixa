@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 
@@ -14,8 +15,13 @@ class AppDatabase {
   }
 
   Future<Database> _initDatabase() async {
-    final databasesPath = await getDatabasesPath();
-    final dbPath = p.join(databasesPath, _dbName);
+    String dbPath;
+    if (kIsWeb) {
+      dbPath = inMemoryDatabasePath;
+    } else {
+      final databasesPath = await getDatabasesPath();
+      dbPath = p.join(databasesPath, _dbName);
+    }
 
     return await openDatabase(
       dbPath,
