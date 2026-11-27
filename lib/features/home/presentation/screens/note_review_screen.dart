@@ -20,13 +20,22 @@ class NoteReviewScreen extends StatefulWidget {
 }
 
 class _NoteReviewScreenState extends State<NoteReviewScreen> {
+  late List<Transaction> _transactions;
+  late List<Meeting> _meetings;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _transactions = List.from(widget.note.extractedTransactions);
+    _meetings = List.from(widget.note.extractedMeetings);
+  }
 
   Future<void> _saveAll() async {
     setState(() => _isSaving = true);
 
     // Save Extracted Transactions to Wallet
-    for (final t in widget.note.extractedTransactions) {
+    for (final t in _transactions) {
       if (mounted) {
         context.read<WalletBloc>().add(AddTransactionEvent(t));
       }
@@ -34,7 +43,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
 
     // Save Extracted Meetings to Calendar
     final calendarRepo = context.read<CalendarRepository>();
-    for (final m in widget.note.extractedMeetings) {
+    for (final m in _meetings) {
       await calendarRepo.createMeeting(m);
     }
 
@@ -53,12 +62,12 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Calculate Summary Totals
+    // Calculate Summary Totals dynamically
     double totalReceived = 0;
     double totalSpent = 0;
     String currency = 'EGP';
 
-    for (final t in widget.note.extractedTransactions) {
+    for (final t in _transactions) {
       currency = t.currency;
       if (t.isIncome) {
         totalReceived += t.amount;
@@ -113,7 +122,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
             const SizedBox(height: 20),
 
             // Financial Summary Card (If multiple transactions detected)
-            if (widget.note.extractedTransactions.length > 1) ...[
+            if (_transactions.length > 1) ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
@@ -169,7 +178,7 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
             ],
 
             // Extracted Transactions Section
-            if (widget.note.extractedTransactions.isNotEmpty) ...[
+            if (_transactions.isNotEmpty) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -178,97 +187,126 @@ class _NoteReviewScreenState extends State<NoteReviewScreen> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    '${widget.note.extractedTransactions.length} بنود',
+                    '${_transactions.length} بنود',
                     style: TextStyle(fontSize: 13, color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              ...widget.note.extractedTransactions.map((Transaction t) => Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: t.isIncome ? NotixaPalette.receivedBackground : NotixaPalette.spentBackground,
-                        shape: BoxShape.circle,
+              ...List.generate(_transactions.length, (index) {
+                final t = _transactions[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: t.isIncome ? NotixaPalette.receivedBackground : NotixaPalette.spentBackground,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          t.isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+                          color: t.isIncome ? NotixaPalette.received : NotixaPalette.spent,
+                          size: 20,
+                        ),
                       ),
-                      child: Icon(
-                        t.isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-                        color: t.isIncome ? NotixaPalette.received : NotixaPalette.spent,
-                        size: 20,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(t.category, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            const SizedBox(height: 2),
+                            Text(
+                              t.note ?? (t.isIncome ? 'إيراد / رصيد' : 'مصروف'),
+                              style: TextStyle(fontSize: 12, color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(t.category, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          const SizedBox(height: 2),
-                          Text(
-                            t.note ?? (t.isIncome ? 'إيراد / رصيد' : 'مصروف'),
-                            style: TextStyle(fontSize: 12, color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight),
-                          ),
-                        ],
+                      Text(
+                        '${t.isIncome ? '+' : '-'}${t.amount} ${t.currency}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: t.isIncome ? NotixaPalette.received : NotixaPalette.spent,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${t.isIncome ? '+' : '-'}${t.amount} ${t.currency}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: t.isIncome ? NotixaPalette.received : NotixaPalette.spent,
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                        tooltip: 'حذف هذا البند',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          setState(() {
+                            _transactions.removeAt(index);
+                          });
+                        },
                       ),
-                    ),
-                  ],
-                ),
-              )),
+                    ],
+                  ),
+                );
+              }),
               const SizedBox(height: 20),
             ],
 
             // Extracted Meetings Section
-            if (widget.note.extractedMeetings.isNotEmpty) ...[
+            if (_meetings.isNotEmpty) ...[
               const Text(
                 'المواعيد والاجتماعات المكتشفة',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              ...widget.note.extractedMeetings.map((Meeting m) => Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.event, color: NotixaPalette.tertiary, size: 24),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(m.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          const SizedBox(height: 4),
-                          Text(
-                            'الساعة ${DateFormat('hh:mm a').format(m.startTime)}',
-                            style: const TextStyle(fontSize: 12, color: NotixaPalette.primary, fontWeight: FontWeight.w600),
-                          ),
-                        ],
+              ...List.generate(_meetings.length, (index) {
+                final m = _meetings[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.event, color: NotixaPalette.tertiary, size: 24),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(m.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            const SizedBox(height: 4),
+                            Text(
+                              'الساعة ${DateFormat('hh:mm a').format(m.startTime)}',
+                              style: const TextStyle(fontSize: 12, color: NotixaPalette.primary, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              )),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                        tooltip: 'حذف هذا الموعد',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          setState(() {
+                            _meetings.removeAt(index);
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              }),
               const SizedBox(height: 24),
             ],
 

@@ -154,6 +154,51 @@ class ExtractNoteUsecase {
       ));
     }
 
+    // Smart Conversational Deduplication & Co-reference Resolution
+    // Resolves cases where speech rephrases or clarifies the same amount:
+    // e.g. "صرفت 70 جنيه على الأكل فأكلت بـ 70 جنيه"
+    final refinedTransactions = <Transaction>[];
+
+    for (int i = 0; i < transactions.length; i++) {
+      final current = transactions[i];
+      bool isDuplicate = false;
+
+      for (int j = 0; j < refinedTransactions.length; j++) {
+        final existing = refinedTransactions[j];
+
+        // Check if both are spent and have the exact same amount
+        if (existing.type == TransactionType.spent &&
+            current.type == TransactionType.spent &&
+            (existing.amount - current.amount).abs() < 0.001) {
+
+          final existingIsGeneric = existing.category.contains('عام');
+          final currentIsGeneric = current.category.contains('عام');
+
+          if (existingIsGeneric && !currentIsGeneric) {
+            // Existing was generic ("صرفت 70"), current is specific ("أكل 70")
+            // Upgrade existing to the specific category!
+            refinedTransactions[j] = current;
+            isDuplicate = true;
+            break;
+          } else if (!existingIsGeneric && currentIsGeneric) {
+            // Existing is already specific ("أكل 70"), current is generic ("صرفت 70")
+            // Discard the generic duplicate!
+            isDuplicate = true;
+            break;
+          } else if (existing.category == current.category) {
+            // Both are identical category and amount (user repeated themselves)
+            // Discard the redundant repetition!
+            isDuplicate = true;
+            break;
+          }
+        }
+      }
+
+      if (!isDuplicate) {
+        refinedTransactions.add(current);
+      }
+    }
+
     // Check for Meetings in text
     final lowerFull = text.toLowerCase();
     if (lowerFull.contains('اجتماع') || lowerFull.contains('meeting') || 
@@ -191,7 +236,7 @@ class ExtractNoteUsecase {
     return Success(ExtractedNote(
       rawText: originalTrimmed,
       audioPath: audioPath,
-      extractedTransactions: transactions,
+      extractedTransactions: refinedTransactions,
       extractedMeetings: meetings,
       createdAt: DateTime.now(),
     ));
