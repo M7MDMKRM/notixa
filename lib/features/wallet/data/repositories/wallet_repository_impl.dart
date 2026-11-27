@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' hide Transaction;
 import 'package:uuid/uuid.dart';
 import 'package:notixa/core/data/local/app_database.dart';
 import 'package:notixa/core/domain/result.dart';
