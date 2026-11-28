@@ -5,11 +5,12 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="Nexa - AI Voice Notes, Calendar Meetings & Financial Expense Tracking">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Nexa">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -18,6 +19,31 @@
 
   <title>Nexa</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      background-color: #F8F9FE;
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-font-smoothing: antialiased;
+    }
+    flutter-view {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+  </style>
 
   <!-- Speech and Audio Web Engine -->
   <script>

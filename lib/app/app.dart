@@ -95,6 +95,14 @@ class _NotixaAppState extends State<NotixaApp> {
             _SafeWidgetsLocalizationsDelegate(),
             _SafeCupertinoLocalizationsDelegate(),
           ],
+          builder: (context, child) {
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+          },
           home: !_isOnboarded
               ? OnboardingScreen(onFinish: () => setState(() => _isOnboarded = true))
               : (!_isLoggedIn
