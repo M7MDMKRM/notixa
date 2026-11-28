@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  nexa-backend:
+    build: .
+    container_name: nexa_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./data/nexa.db
+    volumes:
+      - ./data:/app/data
