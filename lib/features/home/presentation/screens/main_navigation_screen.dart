@@ -28,7 +28,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void initState() {
     super.initState();
     _screens = [
-      const HomeDashboardScreen(),
+      HomeDashboardScreen(
+        onNavigateToMeetings: () => setState(() => _currentIndex = 1),
+      ),
       const CalendarScreen(),
       const WalletScreen(),
       ProfileScreen(
@@ -41,6 +43,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final navBg = isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard;
+    final borderColor = isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder;
 
     return Scaffold(
       body: IndexedStack(
@@ -48,37 +52,65 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         children: _screens,
       ),
       bottomNavigationBar: Container(
+        height: 72,
         decoration: BoxDecoration(
+          color: navBg,
           border: Border(
             top: BorderSide(
-              color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder,
+              color: borderColor,
               width: 1,
             ),
           ),
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Home',
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildNavItem(0, Icons.home_outlined, Icons.home, 'Home', isDark),
+            _buildNavItem(1, Icons.calendar_month_outlined, Icons.calendar_month, 'Meetings', isDark),
+            _buildNavItem(2, Icons.account_balance_wallet_outlined, Icons.account_balance_wallet, 'Wallet', isDark),
+            _buildNavItem(3, Icons.person_outline, Icons.person, 'Profile', isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData outlineIcon, IconData filledIcon, String label, bool isDark) {
+    final isSelected = _currentIndex == index;
+    return InkWell(
+      onTap: () => setState(() => _currentIndex = index),
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? (isDark ? NotixaPalette.primary.withOpacity(0.2) : NotixaPalette.purpleBadge)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                isSelected ? filledIcon : outlineIcon,
+                color: isSelected
+                    ? NotixaPalette.primary
+                    : (isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight),
+                size: 22,
+              ),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month_outlined),
-              activeIcon: Icon(Icons.calendar_month),
-              label: 'Calendar',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              activeIcon: Icon(Icons.account_balance_wallet),
-              label: 'Wallet',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Profile',
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? NotixaPalette.primary
+                    : (isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight),
+              ),
             ),
           ],
         ),

@@ -63,8 +63,8 @@ class NotixaApp extends StatefulWidget {
 }
 
 class _NotixaAppState extends State<NotixaApp> {
-  ThemeMode _themeMode = ThemeMode.dark;
-  Locale _locale = const Locale('ar');
+  ThemeMode _themeMode = ThemeMode.light;
+  Locale _locale = const Locale('en');
   bool _isOnboarded = true;
   bool _isLoggedIn = true;
 

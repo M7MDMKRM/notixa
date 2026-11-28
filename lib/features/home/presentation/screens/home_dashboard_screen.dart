@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:notixa/app/theme/notixa_palette.dart';
-import 'package:notixa/core/design_system/notixa_button.dart';
 import 'package:notixa/core/speech/speech_recognition_bridge.dart';
 import 'package:notixa/features/calendar/domain/models/meeting.dart';
 import 'package:notixa/features/calendar/domain/repositories/calendar_repository.dart';
@@ -11,7 +9,9 @@ import '../../domain/usecases/extract_note_usecase.dart';
 import 'note_review_screen.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
-  const HomeDashboardScreen({super.key});
+  final VoidCallback? onNavigateToMeetings;
+
+  const HomeDashboardScreen({super.key, this.onNavigateToMeetings});
 
   @override
   State<HomeDashboardScreen> createState() => _HomeDashboardScreenState();
@@ -19,6 +19,9 @@ class HomeDashboardScreen extends StatefulWidget {
 
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   List<Meeting> _upcomingMeetings = [];
+  bool _isListening = false;
+  String _recognizedText = '';
+  String _selectedLanguage = 'Arabic';
 
   @override
   void initState() {
@@ -37,171 +40,131 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     }
   }
 
-  void _openVoiceRecordingModal(BuildContext context) {
-    final textController = TextEditingController(text: '');
-    bool isListening = false;
+  void _toggleLiveRecording() {
+    if (_isListening) {
+      SpeechRecognitionBridge.stop();
+      setState(() => _isListening = false);
+      if (_recognizedText.trim().isNotEmpty) {
+        _processSpokenText(_recognizedText.trim());
+      }
+    } else {
+      setState(() {
+        _isListening = true;
+        _recognizedText = '';
+      });
+      SpeechRecognitionBridge.start((liveText) {
+        if (mounted) {
+          setState(() {
+            _recognizedText = liveText;
+          });
+        }
+      });
+    }
+  }
 
+  Future<void> _processSpokenText(String text) async {
+    final extractor = context.read<ExtractNoteUsecase>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: NotixaPalette.primary),
+                SizedBox(height: 16),
+                Text('AI is analyzing your note...', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final result = await extractor(rawText: text);
+    if (mounted) {
+      Navigator.of(context).pop(); // dismiss loading dialog
+      if (result.isSuccess && result.dataOrNull != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => NoteReviewScreen(note: result.dataOrNull!),
+          ),
+        );
+      }
+    }
+  }
+
+  void _openTextInputModal() {
+    final controller = TextEditingController();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            void toggleListening() {
-              if (isListening) {
-                SpeechRecognitionBridge.stop();
-                setSheetState(() => isListening = false);
-              } else {
-                setSheetState(() => isListening = true);
-                SpeechRecognitionBridge.start((liveText) {
-                  setSheetState(() {
-                    textController.text = liveText;
-                  });
-                });
-              }
-            }
-
-            return Container(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-                top: 24,
-                left: 20,
-                right: 20,
-              ),
-              decoration: BoxDecoration(
-                color: isDark ? NotixaPalette.darkSurface : NotixaPalette.lightSurface,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'المساعد الصوتي الذكي',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'تكلم بطبيعتك أو اكتب الملاحظة وسيقوم الذكاء الاصطناعي بتفصيل المصروفات والمواعيد.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? NotixaPalette.textSecondaryDark : NotixaPalette.textSecondaryLight,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Big Animated Microphone
-                    GestureDetector(
-                      onTap: toggleListening,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: isListening ? 90 : 80,
-                        height: isListening ? 90 : 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: isListening
-                                ? [NotixaPalette.error, const Color(0xFFDC2626)]
-                                : [NotixaPalette.primary, NotixaPalette.secondary],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (isListening ? NotixaPalette.error : NotixaPalette.primary).withOpacity(0.4),
-                              blurRadius: isListening ? 24 : 16,
-                              spreadRadius: isListening ? 4 : 0,
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          isListening ? Icons.stop : Icons.mic,
-                          color: Colors.white,
-                          size: 38,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      isListening ? 'جاري الاستماع... تكلم الآن' : 'اضغط على المايك للتحدث',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: isListening ? NotixaPalette.error : NotixaPalette.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Live Speech / Text Field
-                    TextField(
-                      controller: textController,
-                      maxLines: 3,
-                      autofocus: false,
-                      decoration: InputDecoration(
-                        labelText: 'النص المسجل / المكتوب',
-                        hintText: 'تكلم بالمايك أو اكتب الملاحظة هنا مباشرة...',
-                        filled: true,
-                        fillColor: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Process Button
-                    NotixaButton(
-                      label: 'تحليل وتفصيل البنود',
-                      onPressed: () async {
-                        // Stop listening immediately if still active
-                        if (isListening) {
-                          SpeechRecognitionBridge.stop();
-                          isListening = false;
-                        }
-
-                        final spokenText = textController.text.trim();
-                        if (spokenText.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('يرجى التحدث عبر المايك أو كتابة نص الملاحظة لتحليلها'),
-                              backgroundColor: NotixaPalette.warning,
-                            ),
-                          );
-                          return;
-                        }
-
-                        Navigator.of(ctx).pop();
-
-                        final extractor = context.read<ExtractNoteUsecase>();
-                        final extractResult = await extractor(rawText: spokenText);
-
-                        if (extractResult.isSuccess && mounted) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => NoteReviewScreen(note: extractResult.dataOrNull!),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ],
+        return Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            top: 24,
+            left: 20,
+            right: 20,
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Type your note',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? NotixaPalette.textPrimaryDark : NotixaPalette.textPrimaryLight,
                 ),
               ),
-            );
-          },
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                maxLines: 4,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'e.g. Spent 50 on food, 20 on coffee...',
+                  filled: true,
+                  fillColor: isDark ? NotixaPalette.darkSurface : NotixaPalette.lightFieldFill,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final txt = controller.text.trim();
+                    if (txt.isNotEmpty) {
+                      Navigator.of(ctx).pop();
+                      _processSpokenText(txt);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: NotixaPalette.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                  ),
+                  child: const Text('Analyze Note', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -210,84 +173,237 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final todayStr = DateFormat('EEEE, d MMMM', 'ar').format(DateTime.now());
+    final bgColor = isDark ? NotixaPalette.darkBackground : NotixaPalette.lightBackground;
+    final cardBg = isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard;
+    final textPrimary = isDark ? NotixaPalette.textPrimaryDark : NotixaPalette.textPrimaryLight;
+    final textMuted = isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight;
+    final borderColor = isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder;
 
     return Scaffold(
+      backgroundColor: bgColor,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header without emojis
+              // 1. TOP HEADER (Logo + Notification Bell)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      Text(
-                        todayStr,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight,
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: NotixaPalette.purpleBadge,
+                          borderRadius: BorderRadius.circular(10),
                         ),
+                        child: const Icon(Icons.all_inclusive, color: NotixaPalette.primary, size: 22),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(width: 8),
                       const Text(
-                        'أهلاً بك',
+                        'Notixa',
                         style: TextStyle(
-                          fontSize: 22,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          color: NotixaPalette.primary,
+                          letterSpacing: -0.5,
                         ),
                       ),
                     ],
                   ),
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: NotixaPalette.primary.withOpacity(0.2),
-                    child: const Icon(Icons.person, color: NotixaPalette.primary),
+                  Stack(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.notifications_none_outlined, color: textPrimary, size: 26),
+                        onPressed: () {},
+                      ),
+                      Positioned(
+                        right: 12,
+                        top: 10,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF43F5E), // Pink/Red notification dot
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Featured Card: AI Voice Note
-              _buildFeaturedCard(isDark),
-              const SizedBox(height: 24),
-
-              // Main Voice Action Button
-              Center(
+              // 2. MAIN "WHAT'S ON YOUR MIND?" CARD
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: borderColor),
+                  boxShadow: isDark
+                      ? []
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                ),
                 child: Column(
                   children: [
-                    GestureDetector(
-                      onTap: () => _openVoiceRecordingModal(context),
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [NotixaPalette.primary, NotixaPalette.secondary],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: NotixaPalette.primary.withOpacity(0.4),
-                              blurRadius: 18,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(Icons.mic, color: Colors.white, size: 36),
+                    // Info Icon Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Icon(Icons.info_outline, color: textMuted, size: 20),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+
+                    // Title
+                    Text(
+                      "What's on your\nmind?",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                        height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'اضغط للتسجيل الصوتي أو كتابة الملاحظة',
+                    const SizedBox(height: 28),
+
+                    // Controls Row (Pencil | Big Mic | Camera)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Left: Pencil Edit Button
+                        IconButton(
+                          icon: Icon(Icons.edit_outlined, color: textMuted, size: 24),
+                          onPressed: _openTextInputModal,
+                        ),
+                        const SizedBox(width: 24),
+
+                        // Center: Animated Glowing Microphone
+                        GestureDetector(
+                          onTap: _toggleLiveRecording,
+                          child: Container(
+                            width: 84,
+                            height: 84,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _isListening
+                                  ? NotixaPalette.spentBackground
+                                  : NotixaPalette.purpleBadge,
+                              border: Border.all(
+                                color: _isListening ? NotixaPalette.spent : NotixaPalette.secondary.withOpacity(0.4),
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Container(
+                                width: 64,
+                                height: 64,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: _isListening
+                                        ? [const Color(0xFFEF4444), const Color(0xFFDC2626)]
+                                        : [NotixaPalette.primary, const Color(0xFF8B5CF6)],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (_isListening ? NotixaPalette.spent : NotixaPalette.primary).withOpacity(0.35),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  _isListening ? Icons.stop : Icons.mic,
+                                  color: Colors.white,
+                                  size: 32,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+
+                        // Right: Camera Scan Button
+                        IconButton(
+                          icon: Icon(Icons.camera_alt_outlined, color: textMuted, size: 24),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Camera & Receipt scan feature ready')),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Language Selector
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedLanguage = _selectedLanguage == 'Arabic' ? 'English' : 'Arabic';
+                        });
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.settings_outlined, color: textMuted, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            _selectedLanguage,
+                            style: TextStyle(
+                              color: textMuted,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Live Speech Preview if listening
+                    if (_isListening) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: NotixaPalette.spentBackground,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          _recognizedText.isEmpty ? 'Listening... Speak now' : _recognizedText,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: NotixaPalette.spent,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+
+                    // Subtitle
+                    Text(
+                      'Capture anything.\nWe Organize everything.',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: NotixaPalette.primary,
+                        fontSize: 13,
+                        color: textMuted,
+                        height: 1.4,
                       ),
                     ),
                   ],
@@ -295,198 +411,111 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               ),
               const SizedBox(height: 28),
 
-              // Upcoming Meetings Section
+              // 3. UPCOMING SECTION
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text(
-                    'اجتماعات ومواعيد اليوم',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Upcoming',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Your next 48 hours',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: textMuted,
+                        ),
+                      ),
+                    ],
                   ),
                   TextButton(
-                    onPressed: () {},
-                    child: const Text('عرض الكل'),
+                    onPressed: widget.onNavigateToMeetings,
+                    child: const Text(
+                      'VIEW MEETINGS',
+                      style: TextStyle(
+                        color: NotixaPalette.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              if (_upcomingMeetings.isEmpty)
-                _buildEmptyMeetings(isDark)
-              else
-                ..._upcomingMeetings.take(3).map((m) => _buildMeetingTile(m, isDark)),
+              const SizedBox(height: 14),
 
-              const SizedBox(height: 24),
-
-              // Wallet Overview Card
-              BlocBuilder<WalletBloc, WalletState>(
-                builder: (context, state) {
-                  if (state is WalletLoaded) {
-                    return Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder),
+              // Meetings List or Clean Empty Card
+              if (_upcomingMeetings.isNotEmpty) ...[
+                ..._upcomingMeetings.take(3).map((m) => Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: NotixaPalette.purpleBadge,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.event, color: NotixaPalette.primary, size: 20),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'رصيد المحفظة الحالي',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight,
-                                ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              m.title,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: textPrimary,
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '${NumberFormat('#,##0.00').format(state.balance)} ${state.selectedCurrency}',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: NotixaPalette.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: NotixaPalette.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.account_balance_wallet, color: NotixaPalette.primary),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              '${m.startTime.hour}:${m.startTime.minute.toString().padLeft(2, '0')}',
+                              style: TextStyle(fontSize: 12, color: textMuted),
+                            ),
+                          ],
+                        ),
                       ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeaturedCard(bool isDark) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'محرك الذكاء الاصطناعي',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const Text(
-            'تحدث بطبيعتك عن يومك ومصروفاتك.',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'يقوم التطبيق بتفصيل كل العمليات والمواعيد تلقائياً وحساب المتبقي.',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMeetingTile(Meeting m, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? NotixaPalette.darkSurface : NotixaPalette.lightSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: NotixaPalette.tertiary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.event, color: NotixaPalette.tertiary, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(m.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 4),
-                Text(
-                  '${DateFormat('hh:mm a').format(m.startTime)} - ${DateFormat('hh:mm a').format(m.endTime)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight,
+                    ],
+                  ),
+                )),
+              ] else ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'No meetings scheduled in the next 48 hours.',
+                      style: TextStyle(color: textMuted, fontSize: 13),
+                    ),
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyMeetings(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? NotixaPalette.darkSurface : NotixaPalette.lightSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? NotixaPalette.darkBorder : NotixaPalette.lightBorder),
-      ),
-      child: Center(
-        child: Text(
-          'لا توجد اجتماعات مسجلة لليوم',
-          style: TextStyle(
-            fontSize: 13,
-            color: isDark ? NotixaPalette.textMutedDark : NotixaPalette.textMutedLight,
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),

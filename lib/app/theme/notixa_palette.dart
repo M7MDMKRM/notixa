@@ -5,17 +5,19 @@ class NotixaPalette {
   NotixaPalette._();
 
   // Brand Accent Colors
-  static const Color primary = Color(0xFF6366F1); // Indigo Primary
-  static const Color primaryLight = Color(0xFF818CF8);
-  static const Color primaryDark = Color(0xFF4F46E5);
-  static const Color secondary = Color(0xFF7C3AED); // Violet
+  static const Color primary = Color(0xFF7C3AED); // Signature Notixa Purple
+  static const Color primaryLight = Color(0xFF9333EA);
+  static const Color primaryDark = Color(0xFF6D28D9);
+  static const Color secondary = Color(0xFF8B5CF6); // Soft Purple
+  static const Color purpleBadge = Color(0xFFF3E8FF); // Lavender pill background
+  static const Color purpleBadgeText = Color(0xFF7C3AED);
   static const Color tertiary = Color(0xFF38BDF8); // Cyan Accent
 
   // Financial & Functional Indicators
-  static const Color received = Color(0xFF4ADE80); // Income Green
-  static const Color receivedBackground = Color(0x1A4ADE80);
-  static const Color spent = Color(0xFFFF6E84); // Expense Coral/Pink
-  static const Color spentBackground = Color(0x1AFF6E84);
+  static const Color received = Color(0xFF10B981); // Emerald Green
+  static const Color receivedBackground = Color(0xFFDCFCE7); // Light green background
+  static const Color spent = Color(0xFFEF4444); // Red/Coral
+  static const Color spentBackground = Color(0xFFFEE2E2); // Light red background
 
   static const Color warning = Color(0xFFFBBF24);
   static const Color error = Color(0xFFEF4444);
@@ -28,12 +30,13 @@ class NotixaPalette {
   static const Color darkBorder = Color(0xFF334155); // Slate 700
   static const Color darkDivider = Color(0xFF334155);
 
-  // Light Theme Neutral Colors
-  static const Color lightBackground = Color(0xFFF8FAFC);
+  // Light Theme Neutral Colors (Matching Screenshots)
+  static const Color lightBackground = Color(0xFFF8F9FE); // Clean soft lavender-white
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFFE2E8F0);
-  static const Color lightDivider = Color(0xFFE2E8F0);
+  static const Color lightFieldFill = Color(0xFFF3F4F6); // Soft gray for inputs
+  static const Color lightBorder = Color(0xFFE5E7EB);
+  static const Color lightDivider = Color(0xFFF3F4F6);
 
   // Text Colors
   static const Color textPrimaryDark = Color(0xFFF8FAFC);
