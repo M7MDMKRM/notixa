@@ -51,6 +51,7 @@ flutter:
 
   assets:
     - assets/
+    - assets/nexa_logo.png
     - assets/Logo.png
     - assets/app_icon.png
     - assets/auth/

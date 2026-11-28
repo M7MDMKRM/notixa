@@ -187,32 +187,14 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. TOP HEADER (Logo + Notification Bell)
+              // 1. TOP HEADER (NEXA Logo + Notification Bell)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: NotixaPalette.purpleBadge,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.all_inclusive, color: NotixaPalette.primary, size: 22),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Notixa',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: NotixaPalette.primary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
+                  Image.asset(
+                    'assets/nexa_logo.png',
+                    height: 28,
+                    fit: BoxFit.contain,
                   ),
                   Stack(
                     children: [

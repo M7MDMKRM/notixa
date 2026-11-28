@@ -37,32 +37,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. TOP HEADER (Logo + Notification Bell)
+              // 1. TOP HEADER (NEXA Logo + Notification Bell)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: NotixaPalette.purpleBadge,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.all_inclusive, color: NotixaPalette.primary, size: 22),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Notixa',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: NotixaPalette.primary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
+                  Image.asset(
+                    'assets/nexa_logo.png',
+                    height: 28,
+                    fit: BoxFit.contain,
                   ),
                   Stack(
                     children: [
@@ -428,11 +410,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Column(
                   children: [
-                    _buildSettingsRow(Icons.info_outline, 'About Notixa', null, textPrimary, textMuted, () {}),
+                    _buildSettingsRow(Icons.info_outline, 'About Nexa', null, textPrimary, textMuted, () {}),
                     Divider(height: 1, color: borderColor),
                     _buildSettingsRow(Icons.shield_outlined, 'Privacy Policy', null, textPrimary, textMuted, () {}),
                     Divider(height: 1, color: borderColor),
-                    _buildSettingsRow(Icons.email_outlined, 'Contact Support', 'support@notixa.ai', textPrimary, textMuted, () {}),
+                    _buildSettingsRow(Icons.email_outlined, 'Contact Support', 'support@nexa.ai', textPrimary, textMuted, () {}),
                     Divider(height: 1, color: borderColor),
                     _buildSettingsRow(Icons.logout, 'Logout', null, const Color(0xFFEF4444), textMuted, () {}),
                   ],
@@ -488,7 +470,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // 7. FOOTER VERSION
               Center(
                 child: Text(
-                  'Notixa v1.0.6',
+                  'Nexa v1.0.6',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,

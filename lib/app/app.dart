@@ -80,7 +80,7 @@ class _NotixaAppState extends State<NotixaApp> {
           BlocProvider<WalletBloc>(create: (_) => sl<WalletBloc>()),
         ],
         child: MaterialApp(
-          title: 'Notixa',
+          title: 'Nexa',
           debugShowCheckedModeBanner: false,
           theme: NotixaTheme.lightTheme,
           darkTheme: NotixaTheme.darkTheme,
