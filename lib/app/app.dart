@@ -96,9 +96,13 @@ class _NotixaAppState extends State<NotixaApp> {
             _SafeCupertinoLocalizationsDelegate(),
           ],
           builder: (context, child) {
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 500),
+            final screenWidth = MediaQuery.of(context).size.width;
+            return Container(
+              color: const Color(0xFFF8F9FE),
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: screenWidth > 500 ? 500 : double.infinity,
+                height: double.infinity,
                 child: child ?? const SizedBox.shrink(),
               ),
             );
