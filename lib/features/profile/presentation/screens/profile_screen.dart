@@ -20,6 +20,125 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _language = 'English'; // 'English' or 'Arabic'
   String _currency = 'EGP';
 
+  final List<Map<String, String>> _personalNotes = [
+    {
+      'title': 'أفكار مشروع NEXA',
+      'content': 'تطوير الباك إند بالكامل والربط مع Gemini API',
+      'category': 'عمل',
+      'date': 'اليوم • 7:15 AM',
+    },
+    {
+      'title': 'ملاحظات ومهام شخصية',
+      'content': 'متابعة المصروفات اليومية وتنظيم المواعيد',
+      'category': 'شخصي',
+      'date': 'أمس',
+    },
+  ];
+
+  void _openCreateNoteModal() {
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
+    String category = 'شخصي';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+                top: 24,
+                left: 20,
+                right: 20,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? NotixaPalette.darkCard : NotixaPalette.lightCard,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'ملاحظة جديدة (New Note)',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? NotixaPalette.textPrimaryDark : NotixaPalette.textPrimaryLight,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: titleController,
+                      style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? NotixaPalette.textPrimaryDark : NotixaPalette.textPrimaryLight),
+                      decoration: InputDecoration(
+                        labelText: 'عنوان الملاحظة',
+                        filled: true,
+                        fillColor: isDark ? NotixaPalette.darkSurface : NotixaPalette.lightFieldFill,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: contentController,
+                      maxLines: 4,
+                      style: TextStyle(color: isDark ? NotixaPalette.textPrimaryDark : NotixaPalette.textPrimaryLight),
+                      decoration: InputDecoration(
+                        labelText: 'محتوى الملاحظة...',
+                        filled: true,
+                        fillColor: isDark ? NotixaPalette.darkSurface : NotixaPalette.lightFieldFill,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (titleController.text.trim().isNotEmpty) {
+                            setState(() {
+                              _personalNotes.insert(0, {
+                                'title': titleController.text.trim(),
+                                'content': contentController.text.trim(),
+                                'category': category,
+                                'date': 'الآن',
+                              });
+                            });
+                            Navigator.of(ctx).pop();
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: NotixaPalette.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                        ),
+                        child: const Text('حفظ الملاحظة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -130,20 +249,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: NotixaPalette.purpleBadge,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Text(
-                                  'FREE',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: NotixaPalette.primary,
-                                  ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Personal Edition',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: NotixaPalette.primary,
                                 ),
                               ),
                             ],
@@ -179,7 +291,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 3. USAGE STATS CARD
+              // 3. PERSONAL NOTES CARD (Replacing usage quotas with personal notes)
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -190,65 +302,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Daily Usage
-                    Text(
-                      'Daily Usage',
-                      style: TextStyle(fontSize: 12, color: textMuted, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '1 / 20',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                        Row(
+                          children: [
+                            Text(
+                              'Personal Notes',
+                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textPrimary),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: NotixaPalette.purpleBadge,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '${_personalNotes.length}',
+                                style: const TextStyle(
+                                  color: NotixaPalette.purpleBadgeText,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const Text(
-                          '95% remaining',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: NotixaPalette.primary),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: const LinearProgressIndicator(
-                        value: 1 / 20,
-                        backgroundColor: NotixaPalette.purpleBadge,
-                        valueColor: AlwaysStoppedAnimation<Color>(NotixaPalette.primary),
-                        minHeight: 6,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Monthly Usage
-                    Text(
-                      'Monthly Usage',
-                      style: TextStyle(fontSize: 12, color: textMuted, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '2 / 200',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
-                        ),
-                        const Text(
-                          '99% remaining',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: NotixaPalette.primary),
+                        TextButton.icon(
+                          onPressed: _openCreateNoteModal,
+                          icon: const Icon(Icons.add, size: 16, color: NotixaPalette.primary),
+                          label: const Text(
+                            'Write Note',
+                            style: TextStyle(color: NotixaPalette.primary, fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: const LinearProgressIndicator(
-                        value: 2 / 200,
-                        backgroundColor: NotixaPalette.purpleBadge,
-                        valueColor: AlwaysStoppedAnimation<Color>(NotixaPalette.primary),
-                        minHeight: 6,
+                    const SizedBox(height: 10),
+                    if (_personalNotes.isNotEmpty) ...[
+                      ...List.generate(_personalNotes.length, (nIdx) {
+                        final n = _personalNotes[nIdx];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? NotixaPalette.darkSurface : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                margin: const EdgeInsets.only(top: 6),
+                                decoration: const BoxDecoration(
+                                  color: NotixaPalette.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      n['title'] ?? '',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textPrimary),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      n['content'] ?? '',
+                                      style: TextStyle(fontSize: 12, color: textMuted),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      n['date'] ?? '',
+                                      style: TextStyle(fontSize: 10, color: textMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 16, color: Colors.grey),
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                                onPressed: () {
+                                  setState(() {
+                                    _personalNotes.removeAt(nIdx);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ] else ...[
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Text(
+                            'لا توجد ملاحظات مكتوبة حالياً. اضغط "Write Note" لإضافة ملاحظة.',
+                            style: TextStyle(fontSize: 12, color: textMuted),
+                          ),
+                        ),
                       ),
+                    ],
+                  ],
+                ),
+              ),
                     ),
                   ],
                 ),
